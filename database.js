@@ -42,7 +42,9 @@ function getUser(id) {
             username: "",
 
             approved: false,
-
+    
+            status: "new",
+            
             joined: false,
 
             requested: false,

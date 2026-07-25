@@ -16,19 +16,50 @@ function registerRequest(bot) {
 
         const user = getUser(ctx.from.id);
 
+        // যদি Reject করা থাকে
+        if (user.status === "rejected") {
+
+            return ctx.answerCbQuery(
+
+`❌ আপনার Request Reject করা হয়েছে।
+
+আবার Request পাঠানো যাবে না।
+
+📩 Support:
+${config.SUPPORT_USERNAME}`,
+
+                {
+                    show_alert: true
+                }
+
+            );
+
+        }
+
+        // যদি Pending থাকে
         if (user.requested) {
 
             return ctx.answerCbQuery(
                 "📩 আপনি ইতোমধ্যে Request পাঠিয়েছেন।",
-                { show_alert: true }
+                {
+                    show_alert: true
+                }
             );
 
         }
 
         updateUser(ctx.from.id, {
+
             requested: true,
+
+            approved: false,
+
+            status: "pending",
+
             name: ctx.from.first_name || "",
+
             username: ctx.from.username || ""
+
         });
 
         await ctx.editMessageReplyMarkup({
@@ -36,12 +67,15 @@ function registerRequest(bot) {
         });
 
         await ctx.reply(
+
 `✅ <b>আপনার Request সফলভাবে পাঠানো হয়েছে।</b>
 
 ⏳ Admin Review করার পর আপনাকে জানানো হবে।`,
+
             {
                 parse_mode: "HTML"
             }
+
         );
 
         // Admin Notification
@@ -75,8 +109,7 @@ ${ctx.from.id}
         return ctx.answerCbQuery();
 
     });
-
-    /* ==========================
+   /* ==========================
        APPROVE
     ========================== */
 
@@ -85,7 +118,13 @@ ${ctx.from.id}
         const userId = ctx.match[1];
 
         updateUser(userId, {
-            approved: true
+
+            approved: true,
+
+            requested: false,
+
+            status: "approved"
+
         });
 
         // ১ ঘণ্টার Single-use Invite Link
@@ -109,7 +148,7 @@ ${ctx.from.id}
 
 ⏳ নিচের Button থেকে ১ ঘণ্টার মধ্যে Channel Join করুন।
 
-⚠️ এই Link শুধুমাত্র ১ জন ব্যবহার করতে পারবে।`,
+⚠️ এই Link শুধুমাত্র ১ জন ব্যবহার করতে পারবে এবং ১ ঘণ্টা পরে Expire হয়ে যাবে।`,
 
             {
                 parse_mode: "HTML",
@@ -135,7 +174,13 @@ ${ctx.from.id}
         const userId = ctx.match[1];
 
         updateUser(userId, {
-            approved: false
+
+            approved: false,
+
+            requested: false,
+
+            status: "rejected"
+
         });
 
         await ctx.telegram.sendMessage(
@@ -144,9 +189,13 @@ ${ctx.from.id}
 
 `❌ <b>দুঃখিত!</b>
 
-আপনি বর্তমানে Trading শেখার জন্য নির্বাচিত হননি।
+আপনার Request Reject করা হয়েছে।
 
-🙏 ভবিষ্যতে আবার চেষ্টা করতে পারেন।`,
+🚫 আপনি আর নতুন Request পাঠাতে পারবেন না।
+
+📩 Support এর সাথে যোগাযোগ করুন:
+
+<b>${config.SUPPORT_USERNAME}</b>`,
 
             {
                 parse_mode: "HTML"
@@ -163,10 +212,6 @@ ${ctx.from.id}
     });
 
 }
-
-/* =========================================
-   EXPORTS
-========================================= */
 
 module.exports = {
 

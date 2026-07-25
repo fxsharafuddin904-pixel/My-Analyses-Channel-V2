@@ -8,6 +8,8 @@ module.exports = {
 
     CHANNEL_USERNAME: "",
 
-    BOT_NAME: "📚 Trading Learning Bot"
+    BOT_NAME: "📚 Trading Learning Bot",
+
+    SUPPORT_USERNAME: "@MarketAnalysSupport"
 
 };

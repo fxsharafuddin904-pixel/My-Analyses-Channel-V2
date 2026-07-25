@@ -16,16 +16,17 @@ function registerRequest(bot) {
 
         const user = getUser(ctx.from.id);
 
-        // যদি Reject করা থাকে
+        // যদি আগে Reject করা থাকে
         if (user.status === "rejected") {
 
             return ctx.answerCbQuery(
 
 `❌ আপনার Request Reject করা হয়েছে।
 
-আবার Request পাঠানো যাবে না।
+🚫 আপনি আর নতুন Request পাঠাতে পারবেন না।
 
-📩 Support:
+📩 Support এর সাথে যোগাযোগ করুন:
+
 ${config.SUPPORT_USERNAME}`,
 
                 {
@@ -36,14 +37,32 @@ ${config.SUPPORT_USERNAME}`,
 
         }
 
-        // যদি Pending থাকে
-        if (user.requested) {
+        // যদি Approved থাকে
+        if (user.status === "approved") {
 
             return ctx.answerCbQuery(
-                "📩 আপনি ইতোমধ্যে Request পাঠিয়েছেন।",
+
+"✅ আপনার Request ইতোমধ্যেই Approved হয়েছে।",
+
                 {
                     show_alert: true
                 }
+
+            );
+
+        }
+
+        // যদি Pending থাকে
+        if (user.status === "pending") {
+
+            return ctx.answerCbQuery(
+
+"⏳ আপনার Request এখনও Review-এ আছে।",
+
+                {
+                    show_alert: true
+                }
+
             );
 
         }
@@ -54,6 +73,8 @@ ${config.SUPPORT_USERNAME}`,
 
             approved: false,
 
+            joined: false,
+
             status: "pending",
 
             name: ctx.from.first_name || "",
@@ -62,15 +83,23 @@ ${config.SUPPORT_USERNAME}`,
 
         });
 
-        await ctx.editMessageReplyMarkup({
-            inline_keyboard: []
-        });
+        try {
+
+            await ctx.editMessageReplyMarkup({
+                inline_keyboard: []
+            });
+
+        } catch (e) {}
 
         await ctx.reply(
 
 `✅ <b>আপনার Request সফলভাবে পাঠানো হয়েছে।</b>
 
-⏳ Admin Review করার পর আপনাকে জানানো হবে।`,
+━━━━━━━━━━━━━━
+
+⏳ Admin Review করার পর আপনাকে Notification দেওয়া হবে।
+
+অনুগ্রহ করে অপেক্ষা করুন।`,
 
             {
                 parse_mode: "HTML"
@@ -79,6 +108,7 @@ ${config.SUPPORT_USERNAME}`,
         );
 
         // Admin Notification
+
         await ctx.telegram.sendMessage(
 
             config.ADMIN_ID,
@@ -93,7 +123,7 @@ ${config.SUPPORT_USERNAME}`,
 ${ctx.from.username ? "@" + ctx.from.username : "Not Set"}
 
 🪪 User ID:
-${ctx.from.id}
+<code>${ctx.from.id}</code>
 
 ━━━━━━━━━━━━━━
 
@@ -110,33 +140,43 @@ ${ctx.from.id}
 
     });
    /* ==========================
-       APPROVE
-    ========================== */
+   APPROVE
+========================== */
 
-    bot.action(/^approve_(.+)$/, async (ctx) => {
+bot.action(/^approve_(.+)$/, async (ctx) => {
 
-        const userId = ctx.match[1];
+    const userId = ctx.match[1];
 
-        updateUser(userId, {
+    updateUser(userId, {
 
-            approved: true,
+        approved: true,
 
-            requested: false,
+        requested: false,
 
-            status: "approved"
+        status: "approved",
 
-        });
+        approvedAt: Date.now()
 
-        // ১ ঘণ্টার Single-use Invite Link
-        const invite =
-            await ctx.telegram.createChatInviteLink(
-                config.CHANNEL_ID,
-                {
-                    member_limit: 1,
-                    expire_date:
-                        Math.floor(Date.now() / 1000) + 3600
-                }
-            );
+    });
+
+    try {
+
+        // ১ ঘণ্টার জন্য ১ জনের Invite Link
+        const invite = await ctx.telegram.createChatInviteLink(
+
+            config.CHANNEL_ID,
+
+            {
+
+                member_limit: config.INVITE_MEMBER_LIMIT,
+
+                expire_date:
+                    Math.floor(Date.now() / 1000) +
+                    config.INVITE_EXPIRE_SECONDS
+
+            }
+
+        );
 
         await ctx.telegram.sendMessage(
 
@@ -144,72 +184,118 @@ ${ctx.from.id}
 
 `🎉 <b>অভিনন্দন!</b>
 
+━━━━━━━━━━━━━━
+
 ✅ আপনার Request Approved হয়েছে।
 
-⏳ নিচের Button থেকে ১ ঘণ্টার মধ্যে Channel Join করুন।
+🔗 নিচের Button থেকে Private Channel-এ Join করুন।
 
-⚠️ এই Link শুধুমাত্র ১ জন ব্যবহার করতে পারবে এবং ১ ঘণ্টা পরে Expire হয়ে যাবে।`,
+⏳ এই Link মাত্র <b>১ ঘণ্টা</b> কার্যকর থাকবে এবং <b>শুধুমাত্র ১ জন</b> ব্যবহার করতে পারবে।
+
+স্বাগতম! ❤️`,
 
             {
+
                 parse_mode: "HTML",
+
                 ...joinButton(invite.invite_link)
+
             }
 
         );
 
-        await ctx.editMessageReplyMarkup({
-            inline_keyboard: []
-        });
+    } catch (err) {
 
-        return ctx.answerCbQuery("Approved ✅");
-
-    });
-
-    /* ==========================
-       REJECT
-    ========================== */
-
-    bot.action(/^reject_(.+)$/, async (ctx) => {
-
-        const userId = ctx.match[1];
-
-        updateUser(userId, {
-
-            approved: false,
-
-            requested: false,
-
-            status: "rejected"
-
-        });
+        console.log("Invite Error:", err);
 
         await ctx.telegram.sendMessage(
 
             userId,
 
-`❌ <b>দুঃখিত!</b>
+`✅ আপনার Request Approved হয়েছে।
 
-আপনার Request Reject করা হয়েছে।
+কিন্তু Temporary Join Link তৈরি করা যায়নি।
 
-🚫 আপনি আর নতুন Request পাঠাতে পারবেন না।
-
-📩 Support এর সাথে যোগাযোগ করুন:
-
-<b>${config.SUPPORT_USERNAME}</b>`,
+অনুগ্রহ করে Admin-এর সাথে যোগাযোগ করুন।`,
 
             {
+
                 parse_mode: "HTML"
+
             }
 
         );
+
+    }
+
+    await ctx.editMessageReplyMarkup({
+
+        inline_keyboard: []
+
+    });
+
+    return ctx.answerCbQuery("Approved ✅");
+
+});
+   /* ==========================
+   REJECT
+========================== */
+
+bot.action(/^reject_(.+)$/, async (ctx) => {
+
+    const userId = ctx.match[1];
+
+    updateUser(userId, {
+
+        approved: false,
+
+        requested: false,
+
+        status: "rejected",
+
+        rejectedAt: Date.now()
+
+    });
+
+    await ctx.telegram.sendMessage(
+
+        userId,
+
+`❌ <b>দুঃখিত!</b>
+
+━━━━━━━━━━━━━━
+
+আপনার Request <b>Reject</b> করা হয়েছে।
+
+🚫 আপনি আর নতুন Request পাঠাতে পারবেন না।
+
+📩 যদি মনে করেন এটি ভুল হয়েছে, তাহলে Support-এর সাথে যোগাযোগ করুন।
+
+<b>${config.SUPPORT_USERNAME}</b>
+
+ধন্যবাদ।`,
+
+        {
+            parse_mode: "HTML"
+        }
+
+    );
+
+    try {
 
         await ctx.editMessageReplyMarkup({
             inline_keyboard: []
         });
 
-        return ctx.answerCbQuery("Rejected ❌");
+    } catch (e) {}
 
-    });
+    return ctx.answerCbQuery("Rejected ❌");
+
+});
+
+/* =========================================
+   EXPORTS
+========================================= */
 
 }
 

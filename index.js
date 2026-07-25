@@ -27,12 +27,14 @@ registerAdmin(bot);
    BOT START
 ========================================= */
 
-bot.launch(() => {
+bot.launch().then(() => {
 
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("🤖 Trading Request Bot");
-    console.log("✅ Bot Online");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log(`🤖 ${config.BOT_NAME}`);
+    console.log("✅ Bot Started Successfully");
+    console.log(`👑 Admin ID: ${config.ADMIN_ID}`);
+    console.log(`📢 Channel ID: ${config.CHANNEL_ID}`);
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
 });
 
@@ -41,5 +43,14 @@ bot.launch(() => {
 ========================================= */
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
-
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
+
+/* =========================================
+   ERROR HANDLER
+========================================= */
+
+bot.catch((err, ctx) => {
+
+    console.error("Bot Error:", err);
+
+});

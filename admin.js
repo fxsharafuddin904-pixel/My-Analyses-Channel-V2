@@ -1,5 +1,5 @@
 const config = require("./config");
-const { getAllUsers } = require("./database");
+const { getAllUsers, updateUser } = require("./database");
 
 /* =========================================
    ADMIN PANEL
@@ -7,7 +7,10 @@ const { getAllUsers } = require("./database");
 
 function registerAdmin(bot) {
 
-    // /admin
+    /* ==========================
+       /admin
+    ========================== */
+
     bot.command("admin", async (ctx) => {
 
         if (ctx.from.id != config.ADMIN_ID) return;
@@ -17,114 +20,198 @@ function registerAdmin(bot) {
         const total = users.length;
 
         const approved =
-            users.filter(x => x.approved).length;
+            users.filter(x => x.status === "approved").length;
 
         const pending =
-            users.filter(
-                x => x.requested && !x.approved
-            ).length;
+            users.filter(x => x.status === "pending").length;
+
+        const rejected =
+            users.filter(x => x.status === "rejected").length;
 
         const joined =
             users.filter(x => x.joined).length;
-
-        const rejected =
-            users.filter(
-                x => x.requested && !x.approved
-            ).length;
 
         await ctx.reply(
 
 `👑 <b>Admin Panel</b>
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━
 
-👥 Total Users
-<b>${total}</b>
+👥 Total Users : <b>${total}</b>
 
-✅ Approved Users
-<b>${approved}</b>
+✅ Approved : <b>${approved}</b>
 
-📩 Pending Requests
-<b>${pending}</b>
+📩 Pending : <b>${pending}</b>
 
-📢 Joined Channel
-<b>${joined}</b>
+❌ Rejected : <b>${rejected}</b>
 
-❌ Rejected
-<b>${rejected}</b>
+📢 Joined : <b>${joined}</b>
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━
 
-⚙️ Bot Status : Online ✅`,
+🤖 Bot Status : Online ✅`,
 
-            {
-                parse_mode: "HTML"
-            }
-
-        );
+        {
+            parse_mode: "HTML"
+        });
 
     });
 
     /* ==========================
-       BROADCAST
+       /approve USER_ID
     ========================== */
 
-    bot.command("broadcast", async (ctx) => {
+    bot.command("approve", async (ctx) => {
 
         if (ctx.from.id != config.ADMIN_ID) return;
 
-        const text = ctx.message.text.replace(
-            "/broadcast",
-            ""
-        ).trim();
+        const args = ctx.message.text.split(" ");
 
-        if (!text) {
+        if (args.length < 2) {
 
             return ctx.reply(
 
-"ব্যবহার:\n\n/broadcast আপনার মেসেজ"
+"ব্যবহার:\n\n/approve USER_ID"
 
             );
 
         }
 
-        const users = getAllUsers();
+        const userId = args[1];
 
-        let sent = 0;
+        updateUser(userId, {
 
-        for (const user of users) {
+            approved: true,
 
-            try {
+            requested: false,
 
-                await ctx.telegram.sendMessage(
+            status: "approved",
 
-                    user.id,
+            approvedAt: Date.now()
 
-                    `📢 <b>Admin Message</b>
+        });
 
-━━━━━━━━━━━━━━━━━━
+        try {
 
-${text}`,
+            const invite =
+                await ctx.telegram.createChatInviteLink(
+
+                    config.CHANNEL_ID,
 
                     {
-                        parse_mode: "HTML"
+
+                        member_limit: 1,
+
+                        expire_date:
+                            Math.floor(Date.now() / 1000) + 3600
+
                     }
 
                 );
 
-                sent++;
+            await ctx.telegram.sendMessage(
 
-            } catch (e) {}
+                userId,
+
+`🎉 <b>অভিনন্দন!</b>
+
+✅ Admin আপনার Request Approved করেছেন।
+
+নিচের Button থেকে Channel Join করুন।`,
+
+                {
+
+                    parse_mode: "HTML",
+
+                    reply_markup: {
+
+                        inline_keyboard: [
+
+                            [
+
+                                {
+
+                                    text: "📢 Join Channel",
+
+                                    url: invite.invite_link
+
+                                }
+
+                            ]
+
+                        ]
+
+                    }
+
+                }
+
+            );
+
+        } catch (e) {}
+
+        ctx.reply("✅ User Approved.");
+
+    });
+
+    /* ==========================
+       /reject USER_ID
+    ========================== */
+
+    bot.command("reject", async (ctx) => {
+
+        if (ctx.from.id != config.ADMIN_ID) return;
+
+        const args = ctx.message.text.split(" ");
+
+        if (args.length < 2) {
+
+            return ctx.reply(
+
+"ব্যবহার:\n\n/reject USER_ID"
+
+            );
 
         }
 
-        ctx.reply(
+        const userId = args[1];
 
-`✅ Broadcast Complete
+        updateUser(userId, {
 
-📨 Sent : ${sent}`
+            approved: false,
 
-        );
+            requested: false,
+
+            status: "rejected",
+
+            rejectedAt: Date.now()
+
+        });
+
+        try {
+
+            await ctx.telegram.sendMessage(
+
+                userId,
+
+`❌ আপনার Request Reject করা হয়েছে।
+
+🚫 আপনি আর নতুন Request পাঠাতে পারবেন না।
+
+📩 Support:
+
+${config.SUPPORT_USERNAME}`,
+
+                {
+
+                    parse_mode: "HTML"
+
+                }
+
+            );
+
+        } catch (e) {}
+
+        ctx.reply("❌ User Rejected.");
 
     });
 

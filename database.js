@@ -2,6 +2,10 @@ const fs = require("fs");
 
 const DB_FILE = "./users.json";
 
+/* =========================================
+   LOAD USERS
+========================================= */
+
 function loadUsers() {
 
     if (!fs.existsSync(DB_FILE)) {
@@ -14,6 +18,10 @@ function loadUsers() {
 
 }
 
+/* =========================================
+   SAVE USERS
+========================================= */
+
 function saveUsers(users) {
 
     fs.writeFileSync(
@@ -22,6 +30,10 @@ function saveUsers(users) {
     );
 
 }
+
+/* =========================================
+   GET USER
+========================================= */
 
 function getUser(id) {
 
@@ -42,14 +54,20 @@ function getUser(id) {
             username: "",
 
             approved: false,
-    
-            status: "new",
-            
-            joined: false,
 
             requested: false,
 
-            createdAt: Date.now()
+            joined: false,
+
+            status: "none", // none | pending | approved | rejected
+
+            createdAt: Date.now(),
+
+            approvedAt: null,
+
+            rejectedAt: null,
+
+            joinedAt: null
 
         };
 
@@ -62,6 +80,10 @@ function getUser(id) {
     return user;
 
 }
+
+/* =========================================
+   UPDATE USER
+========================================= */
 
 function updateUser(id, data) {
 
@@ -85,11 +107,33 @@ function updateUser(id, data) {
 
 }
 
+/* =========================================
+   GET ALL USERS
+========================================= */
+
 function getAllUsers() {
 
     return loadUsers();
 
 }
+
+/* =========================================
+   DELETE USER
+========================================= */
+
+function deleteUser(id) {
+
+    const users = loadUsers().filter(
+        x => x.id != id
+    );
+
+    saveUsers(users);
+
+}
+
+/* =========================================
+   EXPORTS
+========================================= */
 
 module.exports = {
 
@@ -97,6 +141,8 @@ module.exports = {
 
     updateUser,
 
-    getAllUsers
+    getAllUsers,
+
+    deleteUser
 
 };

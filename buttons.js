@@ -1,30 +1,34 @@
 const { Markup } = require("telegraf");
 
+/* =========================================
+   START BUTTONS
+========================================= */
+
 function startButtons() {
 
     return Markup.inlineKeyboard([
 
         [
-
             Markup.button.callback(
                 "📩 Send Request",
                 "send_request"
             )
-
         ],
 
         [
-
             Markup.button.callback(
                 "❌ No Thanks",
                 "no_thanks"
             )
-
         ]
 
     ]);
 
 }
+
+/* =========================================
+   ADMIN BUTTONS
+========================================= */
 
 function adminButtons(userId) {
 
@@ -48,6 +52,10 @@ function adminButtons(userId) {
 
 }
 
+/* =========================================
+   JOIN CHANNEL BUTTON
+========================================= */
+
 function joinButton(link) {
 
     return Markup.inlineKeyboard([
@@ -55,7 +63,7 @@ function joinButton(link) {
         [
 
             Markup.button.url(
-                "📢 Join Channel",
+                "📢 Join Private Channel",
                 link
             )
 
@@ -64,6 +72,10 @@ function joinButton(link) {
     ]);
 
 }
+
+/* =========================================
+   EXPORTS
+========================================= */
 
 module.exports = {
 
